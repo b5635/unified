@@ -2686,7 +2686,7 @@ void NWNX_Creature_OverrideLimitMovementSpeed(object oCreature, int nState, int 
     string sFunc = "OverrideLimitMovementSpeed";
 
     NWNX_PushArgumentInt(nState);
-    NWNX_PushArgumentInt(bStatus);
+    NWNX_PushArgumentInt(bDisableLimitMovementSpeed);
     NWNX_PushArgumentObject(oCreature);
 	
     NWNX_CallFunction(NWNX_Creature, sFunc);
