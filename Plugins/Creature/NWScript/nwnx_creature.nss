@@ -87,6 +87,17 @@ const int NWNX_CREATURE_PROJECTILE_VFX_SONIC        = 5;
 const int NWNX_CREATURE_PROJECTILE_VFX_RANDOM       = 6; ///< Random Elemental VFX
 /// @}
 
+/// @name Override Limit Movement Speed
+/// @anchor override_limit_movement_speed
+///
+/// Used with OverrideLimitMovementSpeed()
+/// @{
+const int NWNX_CREATURE_ACTION_MODE_DETECT          = 0;
+const int NWNX_CREATURE_ACTION_MODE_STEALTH         = 1;
+const int NWNX_CREATURE_LIGHTLY_ENCUMBERED          = 2;
+const int NWNX_CREATURE_HEAVILY_ENCUMBERED          = 3;
+/// @}
+
 /// @struct NWNX_Creature_SpecialAbility
 /// @brief A creature special ability.
 struct NWNX_Creature_SpecialAbility
@@ -1045,6 +1056,12 @@ object NWNX_Creature_GetBodyBag(object oCreature);
 /// @param bAddToFront TRUE to add the cast spell action to the front of the action queue.
 /// @return TRUE if the action was successfully added to oCreature's action queue.
 int NWNX_Creature_AddCastSpellActions(object oCreature, object oTarget, vector vTargetLocation, int nSpellID, int nMultiClass, int nMetaMagic = METAMAGIC_NONE, int nDomainLevel = 0, int nProjectilePathType = PROJECTILE_PATH_TYPE_DEFAULT, int bInstant = FALSE, int bClearActions = FALSE, int bAddToFront = FALSE);
+
+/// @brief Override the movement speed imposed by detect, stealth, and/or encumbrance states. This can be applied to multiple states.
+/// @param oCreature The creature.
+/// @param int nState The state that this is applied to eg NWNX_CREATURE_ACTION_MODE_DETECT, NWNX_CREATURE_ACTION_MODE_STEALTH, NWNX_CREATURE_LIGHTLY_ENCUMBERED, NWNX_CREATURE_HEAVILY_ENCUMBERED 
+/// @param bDisableLimitMovementSpeed TRUE to disable the movement penalty for this state, FALSE for vanilla behavior
+void NWNX_Creature_OverrideLimitMovementSpeed(object oCreature, int nState, int bDisableLimitMovementSpeed);
 
 /// @}
 
@@ -2662,4 +2679,15 @@ int NWNX_Creature_AddCastSpellActions(object oCreature, object oTarget, vector v
 
     NWNX_CallFunction(NWNX_Creature, sFunc);
     return NWNX_GetReturnValueInt();
+}
+
+void NWNX_Creature_OverrideLimitMovementSpeed(object oCreature, int nState, int bDisableLimitMovementSpeed)
+{
+    string sFunc = "OverrideLimitMovementSpeed";
+
+    NWNX_PushArgumentInt(nState);
+    NWNX_PushArgumentInt(bStatus);
+    NWNX_PushArgumentObject(oCreature);
+	
+    NWNX_CallFunction(NWNX_Creature, sFunc);
 }

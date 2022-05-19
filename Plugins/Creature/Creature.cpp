@@ -3390,3 +3390,119 @@ NWNX_EXPORT ArgumentStack AddCastSpellActions(ArgumentStack&& args)
 
     return false;
 }
+
+NWNX_EXPORT ArgumentStack OverrideLimitMovementSpeed(ArgumentStack&& args)
+{
+    static Hooks::Hook s_ComputeModifiedMovementRateHook =
+        Hooks::HookFunction(Functions::_ZN12CNWSCreature27ComputeModifiedMovementRateEv,
+        (void*)+[](CNWSCreature *pThis) -> void
+        {
+            auto *pStats = pThis->m_pStats;
+            CExoArrayList<CGameEffect*> *pAppliedEffects = &pThis->m_appliedEffects;
+
+            int32_t nModifiers = 0;
+            if (pThis->m_nDetectMode == 1 && !pThis->m_pStats->HasFeat(Constants::Feat::KeenSense) && !pThis->nwnxGet<int32_t>("DISABLE_LIMIT_MOVEMENT_SPEED!0"))
+            {
+                nModifiers++;
+            }
+            if (pThis->m_nStealthMode == 1 && !pThis->nwnxGet<int32_t>("DISABLE_LIMIT_MOVEMENT_SPEED!1"))
+            {
+                nModifiers++;
+            }
+            if (pThis->m_nEncumbranceState == 1 && !pThis->nwnxGet<int32_t>("DISABLE_LIMIT_MOVEMENT_SPEED!2"))
+            {
+                nModifiers++;
+            }
+            if (pThis->m_nEncumbranceState == 2 && !pThis->nwnxGet<int32_t>("DISABLE_LIMIT_MOVEMENT_SPEED!3"))
+            {
+                nModifiers += 2;
+            }
+			
+			LOG_WARNING("nModifiers %d", nModifiers);
+
+            int32_t nIndex = pStats->m_nLimitMovementSpeedPtr;
+            while (nIndex < pAppliedEffects->num && (*pAppliedEffects)[nIndex]->m_nType <= Constants::EffectTrueType::LimitMovementSpeed)
+            {
+                CGameEffect *pEffect = (*pAppliedEffects)[nIndex];
+
+                if (pEffect->m_nType == Constants::EffectTrueType::LimitMovementSpeed &&
+                    pEffect->GetDurationType() == Constants::EffectDurationType::Innate &&
+                    pEffect->GetInteger(0))
+                {
+                    pThis->RemoveEffectById(pEffect->m_nID);
+                    nIndex = pStats->m_nLimitMovementSpeedPtr;
+                }
+                else
+                {
+                    ++nIndex;
+                }
+            }
+
+            nIndex = pStats->m_nMovementSpeedDecreasePtr;
+            while (nIndex < pAppliedEffects->num && (*pAppliedEffects)[nIndex]->m_nType <= Constants::EffectTrueType::MovementSpeedDecrease)
+            {
+                CGameEffect *pEffect = (*pAppliedEffects)[nIndex];
+
+                if (pEffect->m_nType == Constants::EffectTrueType::MovementSpeedDecrease &&
+                    pEffect->GetDurationType() == Constants::EffectDurationType::Innate &&
+                    pEffect->m_oidCreator == pThis->m_idSelf)
+                {
+                    pThis->RemoveEffectById(pEffect->m_nID);
+                    nIndex = pStats->m_nMovementSpeedDecreasePtr;
+                }
+                else
+                {
+                    ++nIndex;
+                }
+            }
+
+            CGameEffect *pForceWalk = nullptr;
+            if (nModifiers > 0)
+            {
+                pForceWalk = new CGameEffect;
+                pForceWalk->m_nType = Constants::EffectTrueType::LimitMovementSpeed;
+                pForceWalk->SetDurationType(Constants::EffectDurationType::Innate);
+                pForceWalk->SetCreator(pThis->m_idSelf);
+                pForceWalk->SetInteger(0, true);
+            }
+
+            if (nModifiers > 1)
+            {
+                int32_t nMovementRate = 100;
+                for (int32_t nCount = 0; nCount < nModifiers - 1; nCount++ )
+                {
+                    nMovementRate /= 2;
+                }
+
+                auto *pMoveSpeed = new CGameEffect(pForceWalk);
+                pMoveSpeed->m_nType = Constants::EffectTrueType::MovementSpeedDecrease;
+                pMoveSpeed->SetDurationType(Constants::EffectDurationType::Innate);
+                pMoveSpeed->SetCreator(pThis->m_idSelf);
+                pMoveSpeed->SetInteger(0, 100 - nMovementRate);
+                pThis->ApplyEffect(pMoveSpeed);
+            }
+
+            if (nModifiers > 0)
+            {
+                pThis->ApplyEffect(pForceWalk);
+            }
+        }, Hooks::Order::Final);
+
+    if (auto *pCreature = Utils::PopCreature(args))
+    {
+        const auto state = args.extract<int32_t>();
+        const bool status = !!args.extract<int32_t>();
+		
+        if (state >= 0 && state <= 3)
+        {
+            auto varname = "DISABLE_LIMIT_MOVEMENT_SPEED!" + std::to_string(state);
+			
+            if (status)
+                pCreature->nwnxSet(varname, true);
+            else
+                pCreature->nwnxRemove(varname);
+        }
+    }
+
+    return {};
+}
